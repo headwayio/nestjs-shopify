@@ -1,5 +1,12 @@
 import { SessionStorage } from '@nestjs-shopify/core';
-import { Controller, Get, Query, Req, Res } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Query,
+  Req,
+  Res,
+  VersioningType,
+} from '@nestjs/common';
 import { ApplicationConfig } from '@nestjs/core';
 import { Shopify } from '@shopify/shopify-api';
 import type { IncomingMessage, ServerResponse } from 'http';
@@ -30,7 +37,14 @@ export abstract class ShopifyAuthBaseController {
       globalPrefix = this.appConfig.getGlobalPrefix();
     }
 
-    const callbackPath = joinUrl(globalPrefix, basePath, 'callback');
+    const versionPrefix = this.getVersionPrefix();
+
+    const callbackPath = joinUrl(
+      globalPrefix,
+      versionPrefix,
+      basePath,
+      'callback'
+    );
 
     await this.shopifyApi.auth.begin({
       callbackPath,
@@ -73,5 +87,22 @@ export abstract class ShopifyAuthBaseController {
     }
 
     res.writeHead(401).end('Invalid session');
+  }
+
+  private getVersionPrefix() {
+    let prefix = '';
+    const options = this.appConfig.getVersioning();
+
+    if (!options) {
+      return prefix;
+    }
+
+    if (options.defaultVersion && options.type === VersioningType.URI) {
+      const versionPrefix = options.prefix || 'v';
+
+      prefix = `${versionPrefix}${String(options.defaultVersion)}`;
+    }
+
+    return prefix;
   }
 }
